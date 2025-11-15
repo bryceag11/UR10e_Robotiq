@@ -1,0 +1,34 @@
+# ROS 2 build artifacts
+build/
+install/
+log/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test scripts and temporary files
+get_tcp_from_robot.py
+get_tcp_rtde.py
+grippy.script
+grippy.txt
+init_gripper.script
+tool_comm_test.script
+ur10_control.py
+GITHUB_SETUP.md
+cleanup.sh
