@@ -1,20 +1,24 @@
 # UR10e + Robotiq 2F-85 MoveIt Integration for ROS 2 Jazzy
 
+ROS 2 Jazzy packages for integrating a Universal Robots UR10e arm with a Robotiq 2F-85 gripper, including full MoveIt2 support for motion planning and execution.
+
 ## Overview
 
 This repository provides a complete integration of the UR10e robot arm with the Robotiq 2F-85 gripper for ROS 2 Jazzy Jalisco on Ubuntu 24.04. It includes:
 
 1. Robotiq gripper driver ported to ROS 2 Jazzy
 2. Combined URDF with calibrated TCP
-3. MoveIt2 configuration for motion planning with arm, gripper, or both
-4. Pre-configured collision avoidance between arm and gripper
+3. URScript-based gripper controller for reliable hardware control
+4. MoveIt2 configuration for motion planning with arm, gripper, or both
+5. Pre-configured collision avoidance between arm and gripper
 
 ## Features
 
 - Full MoveIt2 integration with three planning groups: `ur_manipulator`, `gripper`, and `ur10e_robotiq`
-- ROS2 gripper controller
+- URScript gripper controller using port 30002 for direct gripper control
 - Calibrated TCP at gripper tip for accurate motion planning
-- Collision checking configuration
+- Fake hardware support for gripper in ros2_control (real control via URScript)
+- Comprehensive collision checking configuration
 - RViz visualization with real-time gripper state
 
 ## Prerequisites
@@ -47,6 +51,7 @@ sudo apt install -y \
 
 - Universal Robots UR10e robot arm
 - Robotiq 2F-85 gripper
+- Network connection to robot (default IP: 192.168.56.101)
 
 ## Installation
 
@@ -60,10 +65,10 @@ cd ~/ws_robotiq/src
 ### 2. Clone this repository
 
 ```bash
-git clone https://github.com/bryceag11/UR10e_Robotiq
+git clone <your-repo-url> .
 ```
 
-### 3. Import dependencies
+<!-- ### 3. Import dependencies
 
 ```bash
 cd ~/ws_robotiq
@@ -72,9 +77,9 @@ vcs import src < ur_robotiq_jazzy.repos
 
 This imports:
 - [serial](https://github.com/tylerjw/serial) - Serial communication library
-- [Universal_Robots_ROS2_Driver](https://github.com/UniversalRobots/Universal_Robots_ROS2_Driver) - UR robot driver
+- [Universal_Robots_ROS2_Driver](https://github.com/UniversalRobots/Universal_Robots_ROS2_Driver) - UR robot driver -->
 
-### 4. Install rosdep dependencies
+### 3. Install rosdep dependencies
 
 ```bash
 cd ~/ws_robotiq
@@ -82,14 +87,14 @@ rosdep update
 rosdep install --from-paths src -y --ignore-src
 ```
 
-### 5. Build workspace
+### 4. Build workspace
 
 ```bash
 cd ~/ws_robotiq
 colcon build --symlink-install
 ```
 
-### 6. Source workspace
+### 5. Source workspace
 
 ```bash
 source ~/ws_robotiq/install/setup.bash
@@ -153,6 +158,8 @@ In the MoveIt RViz interface:
 
 ### Controlling the Gripper
 
+The gripper can be controlled in three ways:
+
 #### Via MoveIt
 
 1. Select the `gripper` planning group
@@ -184,7 +191,7 @@ Robotiq gripper driver ported to ROS 2 Jazzy. Includes:
 - Controller implementations
 - URDF description for Robotiq 2F-85
 
-Source: [PickNikRobotics/ros2_robotiq_gripper Jazzy Port](https://github.com/bryceag11/ros2_robotiq_gripper)
+Source: https://github.com/PickNikRobotics/ros2_robotiq_gripper (Jazzy port)
 
 ### ur10e_robotiq_cell
 
@@ -215,12 +222,24 @@ Key configurations:
 
 ## Architecture
 
+### Control Strategy
+
+**UR Arm**: Controlled via ros2_control through External Control URCap (port 50002)
+
+**Gripper**: Controlled via URScript commands (port 30002) with URCap functions from `grippy.script`
+
+This dual-control approach provides:
+- Reliable gripper operation independent of ros2_control
+- Direct URScript access for gripper primitives
+- Fake hardware interface in ros2_control to avoid conflicts
+
 ### TCP Configuration
 
 The TCP (Tool Center Point) is configured at the calibrated gripper tip:
 - Position: X=-11.01mm, Y=-1.3mm, Z=232.63mm from gripper base
 - Rotation: RX=0.0094rad, RY=0.0022rad, RZ=0.0397rad
 
+This matches the calibration from the robot teach pendant for accurate motion planning.
 
 ### Gripper Joint Limits
 
@@ -308,6 +327,16 @@ Arguments:
 This integration builds upon:
 
 - [Universal Robots ROS2 Driver](https://github.com/UniversalRobots/Universal_Robots_ROS2_Driver) - UR robot driver
-- [ros2_robotiq_gripper](https://github.com/bryceag11/ros2_robotiq_gripper) - Robotiq gripper driver
+- [ros2_robotiq_gripper](https://github.com/PickNikRobotics/ros2_robotiq_gripper) - Robotiq gripper driver 
 - [serial](https://github.com/tylerjw/serial) - Serial communication library
-- [Moveit2](https://moveit.picknik.ai/main/index.html) - Motion planning framework
+- [MoveIt2](https://moveit.ai/) - Motion planning framework
+
+
+## Contributing
+
+Issues and pull requests are welcome. When contributing, please:
+
+1. Test on ROS 2 Jazzy with real hardware when possible
+2. Follow ROS 2 package conventions
+3. Document any configuration changes
+4. Include launch file examples for new features
