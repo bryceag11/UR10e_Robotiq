@@ -1,0 +1,1253 @@
+def unnamed():
+  global _hidden_verificationVariable=0
+  set_tcp(p[0.0,0.0,0.0,0.0,0.0,0.0])
+  set_gravity([0.0, 0.0, 9.82])
+  set_safety_mode_transition_hardness(1)
+  set_tool_communication(True, 115200, 0, 1, 1.5, 3.5)
+  set_tool_output_mode(0)
+  set_tool_digital_output_mode(0, 1)
+  set_tool_digital_output_mode(1, 1)
+  set_tool_voltage(24)
+  set_target_payload(0.200000, [0.000000, 0.000000, 0.000000], [0.000105, 0.000105, 0.000105, 0.000000, 0.000000, 0.000000])
+  set_standard_analog_input_domain(0, 1)
+  set_standard_analog_input_domain(1, 1)
+  set_tool_analog_input_domain(0, 1)
+  set_tool_analog_input_domain(1, 1)
+  set_analog_outputdomain(0, 0)
+  set_analog_outputdomain(1, 0)
+  set_input_actions_to_default()
+  rtde_set_watchdog("speed_slider_mask", 10.0, "pause")
+  global Ceiling=p[-0.695,0.485,0.905,-2.955003499740356,-0.8247073106237364,0.14032423045194872]
+  global Near_Table=p[0.0,0.0,-0.35,-3.141185307179689,-1.9234212659831507E-16,-3.917493788967481E-20]
+  global Table=p[0.0,0.0,-0.3936099999999999,3.141592653589793,1.154202416233074E-15,-4.402273234267599E-33]
+  global Wall=p[0.3,0.0,0.0,-4.493411117936836E-17,1.5707963267948966,-1.1092683050537053E-15]
+  # begin: URCap Installation Node
+  #   Source: Remote TCP & Toolpath, 1.4.1, Universal Robots A/S
+  #   Type: Remote TCP & Toolpath
+  mc_check_divergence = True
+  mc_lookahead = 0.03
+  mc_gain = 2000
+  mc_dt = 0.004
+  
+  mc_conv_tol_s = 0.001
+  mc_conv_loops = 100
+  
+  mc_ee_set_id = 2
+  
+  MC_GROUP_STANDBY = 0
+  MC_GROUP_STOPPING = 2
+  MC_GROUP_ERROR_STOP = 3
+  
+  MC_ERROR_PATHDIVERGED = 0
+  MC_ERROR_COLLISION = 1
+  MC_ERROR_JOINTLIMIT = 2
+  MC_ERROR_SINGULARITY = 4
+  MC_ERROR_PLANNINGFAILED = 16
+  MC_ERROR_DAEMONSTOPPED = 1024
+  MC_ERROR_SERVER_BUSY = 1025
+  MC_ERROR_NOT_INITIALIZED = 2000
+  
+  MC_TOOLPATH_ERROR_NONE = 0
+  MC_TOOLPATH_ERROR_FILELOAD = 1
+  MC_TOOLPATH_ERROR_PARSE = 2
+  MC_TOOLPATH_ERROR_EMPTYTOOLPATH = 3
+  MC_TOOLPATH_ERROR_UNSUPPORTEDTYPE = 4
+  
+  MC_GROUP_STATUS_INPUT = 24
+  MC_CURRENT_MOTION_ID_INPUT = 25
+  MC_ERROR_CODE_INPUT = 26
+  MC_DIGITAL_OUTPUTS_INPUT = 27
+  MC_JOINT_VALUE_INPUT = 24
+  MC_WATCHDOG_INPUT = 30
+  MC_PATH_SPEED_INPUT = 31
+  MC_ANALOG_OUTPUT_INPUTS = [32,33]
+  MC_PATH_SPEED_INPUT = 31
+  
+  MC_SPEEDFACTOR_OUTPUT = 24
+  
+  mc_last_watchdog = 0
+  mc_watchdog_counter = 0
+  mc_watchdog_counter_limit = 100
+  
+  mc_last_motion_id = -1
+  mc_group_status = MC_GROUP_STOPPING
+  mc_server_started = False
+  mc_rtcp_moving = False
+  mc_debug_msg = False
+  mc_gmm_initialized = False
+  mc_last_digital_outputs = 0
+  mc_last_analog_outputs = [-1.0, -1.0]
+  
+  def mc_initialize(mode, tcp, doc=6):
+  	mc_check_busy()
+  
+  	if (mode == 0 and doc == 6):
+  		mc_ee_set_id = 0
+  	end
+  
+  	if (mode == 1 and doc == 6):
+  		mc_ee_set_id = 2
+  	end
+  
+  	if (mode == 0 and doc == 5):
+  		mc_ee_set_id = 1
+  	end
+  
+  	if (mode == 1 and doc == 5):
+  		mc_ee_set_id = 3
+  	end
+  
+  	mc_initialize_internal(tcp)
+  end
+  
+  def mc_initialize_internal(tcp):
+  	if (mc_server_started == False):
+  		global mc_server = rpc_factory("xmlrpc", "127.0.0.1:7828")
+  		mc_server_started = True
+  	end
+  
+  	mc_server.setDataStoreBoolean("IS_ON", "/robot/check_divergence", mc_check_divergence)
+  	mc_server.reset()
+  	mc_group_status = MC_GROUP_STANDBY
+  	mc_set_speed_factor(1.0)
+  	mc_server.setKinTransform(mc_ee_set_id, 0, tcp)
+  	mc_gmm_initialized = False
+  end
+  
+  def mc_check_busy():
+  	enter_critical
+  	if (mc_rtcp_moving == False):
+  		mc_rtcp_moving = True
+  	else:
+  		mc_error_stop("", "", MC_ERROR_SERVER_BUSY)
+  	end
+  	exit_critical
+  end
+  
+  def mc_add_linear(pose, a, v, r):
+  	mc_check_ready()
+  	ee_id = 0
+  	buffer_mode = "BLENDING_NEXT"
+  	transition_mode = "CORNER_DISTANCE"
+  	id = mc_server.moveLinearAbsolute(pose, mc_ee_set_id, ee_id, v, a, buffer_mode, transition_mode, r)
+  
+  	if (id == -1):
+  		mc_error_stop("Compute node returned ID ", id)
+  	end
+  
+  	mc_last_motion_id = id
+  
+  	return id
+  end
+  
+  def mc_add_circular(pose_via, pose_to, a, v, r, mode = 0):
+  	mc_check_ready()
+  	ee_id = 0
+  	buffer_mode = "BLENDING_NEXT"
+  	transition_mode = "CORNER_DISTANCE"
+  	id = mc_server.moveCircularBorderAbsolute(pose_via, pose_to, mode, mc_ee_set_id, ee_id, v, a, buffer_mode, transition_mode, r)
+  
+  	if (id == -1):
+  		mc_error_stop("Compute node returned ID ", id)
+  	end
+  
+  	mc_last_motion_id = id
+  
+  	return id
+  end
+  
+  def mc_add_path(path_id, a, v, r):
+  	mc_check_ready()
+  	ee_id = 0
+  	buffer_mode = "BLENDING_NEXT"
+  	transition_mode = "CORNER_DISTANCE"
+  	id = mc_server.movePath(path_id, mc_ee_set_id, ee_id, v, a, buffer_mode, transition_mode, r)
+  
+  	if (id == -1):
+  		result = mc_server.getErrorCode()
+  		mc_toolpath_error_stop(result[0], result[1])
+  	end
+  
+  	mc_last_motion_id = id
+  
+  	return id
+  end
+  
+  def mc_load_path(nc_file, use_feedrate = False):
+  	id = mc_server.loadPath(nc_file, use_feedrate)
+  
+  	if (id < 0):
+  		result = mc_server.getErrorCode()
+  		mc_toolpath_error_stop(result[0], result[1])
+  	end
+  
+  	return id
+  end
+  
+  def mc_get_target_rtcp_speed():
+  	return read_input_float_register(MC_PATH_SPEED_INPUT)
+  end
+  
+  def mc_check_ready():
+  	if mc_group_status != MC_GROUP_STANDBY:
+  		mc_error_stop("", "", MC_ERROR_NOT_INITIALIZED)
+  	end
+  end
+  
+  def mc_set_pcs(pcs):
+  	ee_id = 0
+  	mc_server.setCoordinateTransform(mc_ee_set_id, ee_id, pcs, "ABORTING")
+  end
+  
+  def mc_set_digital_outputs():
+  	current_do = read_input_integer_register(MC_DIGITAL_OUTPUTS_INPUT)
+  	current_do_bin = integer_to_binary_list(current_do)
+  	last_do_bin = integer_to_binary_list(mc_last_digital_outputs)
+  	loopcounter = 0
+  	while (loopcounter < 4):
+  		value_bit = loopcounter * 6
+  		port_bit_0 = value_bit + 1
+  		port_bit_1 = value_bit + 2
+  		port_bit_2 = value_bit + 3
+  		port_bit_3 = value_bit + 4
+  		port_bit_4 = value_bit + 5
+  		last_port = binary_list_to_integer([last_do_bin[port_bit_0], last_do_bin[port_bit_1], last_do_bin[port_bit_2], last_do_bin[port_bit_3], last_do_bin[port_bit_4]])
+  		current_port = binary_list_to_integer([current_do_bin[port_bit_0], current_do_bin[port_bit_1], current_do_bin[port_bit_2], current_do_bin[port_bit_3], current_do_bin[port_bit_4]])
+  		if (current_port != 0 and (current_port != last_port or current_do_bin[value_bit] != last_do_bin[value_bit])):
+  			if (current_port <= 8):
+  				set_standard_digital_out(current_port - 1, current_do_bin[value_bit])
+  			elif (current_port <= 16):
+  				set_configurable_digital_out(current_port - 9, current_do_bin[value_bit])
+  			else:
+  				set_tool_digital_out(current_port - 17, current_do_bin[value_bit])
+  			end
+  		end
+  		loopcounter = loopcounter + 1
+  	end
+  	mc_last_digital_outputs = current_do
+  end
+  
+  def mc_set_analog_outputs():
+  	loopcounter = 0
+  	while (loopcounter < 2):
+  		current_ao = read_input_float_register(MC_ANALOG_OUTPUT_INPUTS[loopcounter])
+  		if((current_ao != mc_last_analog_outputs[loopcounter]) and (current_ao >= 0)):
+  			set_standard_analog_out(loopcounter,current_ao)
+  			mc_last_analog_outputs[loopcounter] = current_ao
+  		end
+        loopcounter = loopcounter + 1
+  	end
+  end
+  
+  def mc_run_motion(id=-1):
+  	if (id == -1):
+  		id = mc_last_motion_id
+  	end
+  
+  	mc_debugMsg("Waiting for ID ", id)
+  
+  	if (mc_gmm_initialized == False):
+  		mc_initialize_gmm()
+  	end
+  
+  	mc_current_motion_id = read_input_integer_register(MC_CURRENT_MOTION_ID_INPUT)
+  	mc_group_status = read_input_integer_register(MC_GROUP_STATUS_INPUT)
+  	joint_targets = get_actual_joint_positions()
+  	while (mc_current_motion_id <= id and mc_current_motion_id != -2 and mc_group_status != MC_GROUP_STOPPING and mc_group_status != MC_GROUP_ERROR_STOP):
+  		mc_current_motion_id = read_input_integer_register(MC_CURRENT_MOTION_ID_INPUT)
+  		mc_group_status = read_input_integer_register(MC_GROUP_STATUS_INPUT)
+  
+  		joint_targets = mc_get_joint_targets(joint_targets)
+  		servoj(joint_targets, t = mc_dt, lookahead_time = mc_lookahead, gain = mc_gain)
+  
+  		mc_set_digital_outputs()
+  
+  		mc_set_analog_outputs()
+  
+  		mc_check_watchdog()
+  	end
+  
+  	if (mc_group_status == MC_GROUP_STOPPING or mc_group_status == MC_GROUP_ERROR_STOP):
+  		stopj(45)
+  
+  		mc_debugMsg("Stopping due to error after ID ", id)
+  
+  		mc_server.setDataStoreBoolean("IS_RTCP_RUNNING", "/group_motion_manager", False)
+  
+  		error_code = read_input_integer_register(MC_ERROR_CODE_INPUT)
+  		mc_error_stop("Compute node returned group status ", mc_group_status, error_code)
+  
+  		mc_rtcp_moving = False
+  		mc_group_status = MC_GROUP_STOPPING
+  	end
+  
+  	if (id == mc_last_motion_id):
+  		mc_debugMsg("Stopping after ID ", id)
+  		mc_check_convergence(joint_targets)
+  
+  		mc_server.setDataStoreBoolean("IS_RTCP_RUNNING", "/group_motion_manager", False)
+  
+  		mc_rtcp_moving = False
+  		mc_group_status = MC_GROUP_STOPPING
+  	end
+  
+  	mc_debugMsg("Completed ID ", id)
+  end
+  
+  def mc_set_speed_factor(s):
+  	write_output_float_register(MC_SPEEDFACTOR_OUTPUT, s)
+  end
+  
+  def mc_initialize_gmm():
+  	mc_current_motion_id = read_input_integer_register(MC_CURRENT_MOTION_ID_INPUT)
+  	while (mc_current_motion_id != -1):
+  		mc_current_motion_id = read_input_integer_register(MC_CURRENT_MOTION_ID_INPUT)
+  		sleep(mc_dt)
+  		mc_check_watchdog()
+  	end
+  
+  	mc_server.setDataStoreBoolean("IS_RTCP_RUNNING", "/group_motion_manager", True)
+  
+  	while (mc_current_motion_id == -1):
+  		mc_current_motion_id = read_input_integer_register(MC_CURRENT_MOTION_ID_INPUT)
+  		sleep(mc_dt)
+  		mc_check_watchdog()
+  	end
+  
+  	mc_gmm_initialized = True
+  end
+  
+  def mc_check_convergence(joint_targets):
+  	loopcounter = 0
+  	converged = False
+  	while (converged == False and loopcounter < mc_conv_loops):
+  
+  		joint_targets = mc_get_joint_targets(joint_targets)
+  		ur_targets = get_target_joint_positions()
+  		joint_speeds = get_actual_joint_speeds()
+  
+  		position_converged = joint_targets[0] == ur_targets[0] and joint_targets[1] == ur_targets[1] and joint_targets[2] == ur_targets[2] and joint_targets[3] == ur_targets[3] and joint_targets[4] == ur_targets[4] and joint_targets[5] == ur_targets[5]
+  		speed_converged = joint_speeds[0] <= mc_conv_tol_s and joint_speeds[1] <= mc_conv_tol_s and joint_speeds[2] <= mc_conv_tol_s and joint_speeds[3] <= mc_conv_tol_s and joint_speeds[4] <= mc_conv_tol_s and joint_speeds[5] <= mc_conv_tol_s
+  		converged = position_converged and speed_converged
+  
+  		servoj(joint_targets, t = mc_dt, lookahead_time = mc_lookahead, gain = mc_gain)
+  
+  		loopcounter = loopcounter + 1
+  	end
+  
+  	mc_debugMsg("Convergence loop count: ", loopcounter)
+  end
+  
+  def mc_check_watchdog():
+  	current_watchdog = read_input_float_register(MC_WATCHDOG_INPUT)
+  
+  	if (current_watchdog > mc_last_watchdog):
+  		mc_last_watchdog = current_watchdog
+  		mc_watchdog_counter = 0
+  	else:
+  		mc_watchdog_counter = mc_watchdog_counter + 1
+  		if (mc_watchdog_counter > mc_watchdog_counter_limit):
+  			mc_error_stop("", "", MC_ERROR_DAEMONSTOPPED)
+  		end
+  	end
+  end
+  
+  def mc_get_joint_targets(joint_targets):
+  	joint_targets[0] = read_input_float_register(MC_JOINT_VALUE_INPUT)
+  	joint_targets[1] = read_input_float_register(MC_JOINT_VALUE_INPUT + 1)
+  	joint_targets[2] = read_input_float_register(MC_JOINT_VALUE_INPUT + 2)
+  	joint_targets[3] = read_input_float_register(MC_JOINT_VALUE_INPUT + 3)
+  	joint_targets[4] = read_input_float_register(MC_JOINT_VALUE_INPUT + 4)
+  	joint_targets[5] = read_input_float_register(MC_JOINT_VALUE_INPUT + 5)
+  	return joint_targets
+  end
+  
+  def mc_error_stop(msg, param="", error_code=MC_ERROR_PLANNINGFAILED):
+  	if (msg != ""):
+  		textmsg(msg, param)
+  	end
+  
+  	textmsg("Error code: ", error_code)
+  	error_msg = mc_getErrorMessage(error_code)
+  	textmsg(error_msg)
+  
+  	popup(error_msg, title="Remote TCP", error=True, blocking=False)
+  	halt
+  end
+  
+  def mc_toolpath_error_stop(error_code, param):
+  	msg = mc_getToolpathMessage(error_code)
+  	textmsg(msg + " - Line: ", param)
+  
+  	popup(msg, title="Toolpath Validation", error=True, blocking=True)
+  	halt
+  end
+  
+  def mc_debugMsg(msg, param=""):
+  	if (mc_debug_msg == True):
+  		textmsg(msg, param)
+  	end
+  end
+  def mc_getErrorMessage(error_code):
+  	if error_code == MC_ERROR_PATHDIVERGED:
+  		return "<html>Robot cannot maintain tool speed. You may avoid this issue by:<ul><li>reducing the tool speed;</li><li>avoiding sharp corners;</li><li>staying away from singularities.</li></ul></html>"
+  	elif error_code == MC_ERROR_COLLISION:
+  		return "Robot is in collision."
+  	elif error_code == MC_ERROR_JOINTLIMIT:
+  		return "Robot is at a joint limit."
+  	elif error_code == MC_ERROR_SINGULARITY:
+  		return "Robot is at a singularity."
+  	elif error_code == MC_ERROR_DAEMONSTOPPED:
+  		return "The controller stopped."
+  	elif error_code == MC_ERROR_SERVER_BUSY:
+  		return "Another Remote TCP Move node is running."
+  	elif error_code == MC_ERROR_NOT_INITIALIZED:
+  		return "Group motion manager is not initialized."
+  	else:
+  		return "Motion planning failed."
+  	end
+  end
+  
+  def mc_getToolpathMessage(message_code):
+  	if message_code == MC_TOOLPATH_ERROR_NONE:
+  		return "Toolpath file is valid."
+  	elif message_code == MC_TOOLPATH_ERROR_FILELOAD:
+  		return "File cannot be loaded."
+  	elif message_code == MC_TOOLPATH_ERROR_PARSE:
+  		return "Parsing error"
+  	elif message_code == MC_TOOLPATH_ERROR_EMPTYTOOLPATH:
+  		return "Empty toolpath"
+  	elif message_code == MC_TOOLPATH_ERROR_UNSUPPORTEDTYPE:
+  		return "Unsupported type"
+  	else:
+  		return "Unknown toolpath validation error"
+  	end
+  end
+  # end: URCap Installation Node
+  # begin: URCap Installation Node
+  #   Source: External Control, 1.0.5, FZI Research Center for Information Technology
+  #   Type: External Control
+  # end: URCap Installation Node
+  # begin: URCap Installation Node
+  #   Source: Robotiq_Grippers, 3.19.1.111718, Robotiq Inc.
+  #   Type: Vacuum
+  #################################################
+  # Vacuum Grip Check
+  #################################################
+  
+  vacuumGripCheckThread1 = 0
+  vacuumGripCheckThread2 = 0
+  vacuumGripCheckThread3 = 0
+  vacuumGripCheckThread4 = 0
+  vacuumGripCheckThread1Running = False
+  vacuumGripCheckThread2Running = False
+  vacuumGripCheckThread3Running = False
+  vacuumGripCheckThread4Running = False
+  vacuumGripCheckslave_id = 1
+  vacuumGripCheckThreadStarted = False
+  
+  thread vacuumGripCheck():
+    slave_id = vacuumGripCheckslave_id
+    vacuumGripCheckThreadStarted = True
+  
+    while (True):
+      objectDetectedDebounceCtr = 0
+  
+      while (objectDetectedDebounceCtr < 3):
+        if(rq_is_vacuum_obj_detected_by_slave_id(slave_id=9)):
+          objectDetectedDebounceCtr = objectDetectedDebounceCtr + 1
+        else:
+          objectDetectedDebounceCtr = 0
+        end
+        sleep(0.1)
+      end
+  
+      objectNotDetectedDebounceCtr = 0
+  
+      while objectNotDetectedDebounceCtr < 3:
+        if (not rq_is_vacuum_obj_detected_by_slave_id(slave_id=9)):
+          objectNotDetectedDebounceCtr = objectNotDetectedDebounceCtr + 1
+        else:
+          objectNotDetectedDebounceCtr = 0
+        end
+        sleep(0.1)
+      end
+  
+      socket_open("127.0.0.1",29999,"dashboardServerSocket")
+      socket_send_line("pause","dashboardServerSocket")
+      socket_send_string("popup Vacuum grip check has detected an object drop.", "dashboardServerSocket")
+      socket_send_byte(10, "dashboardServerSocket")
+      socket_close("dashboardServerSocket")
+  
+      sleep(0.008)
+    end
+  end
+  
+  def startVacuumGripCheckThread(slave_id=9):
+    vacuumGripCheckslave_id = slave_id
+    threadHandle = run vacuumGripCheck()
+    waitForVacuumGripCheckThreadStarted()
+    return threadHandle
+  end
+  
+  def stopVacuumGripCheckThread(threadHandle):
+    kill threadHandle
+  end
+  
+  def waitForVacuumGripCheckThreadStarted():
+    while (not(vacuumGripCheckThreadStarted)):
+      sleep(0.008)
+    end
+    vacuumGripCheckThreadStarted = False
+  end
+  #################################################
+  # End - Vacuum Grip Check
+  #################################################
+  
+  #################################################
+  # Stops the pump on a distance travelled
+  #################################################
+  global stopPumpDistance = 100
+  global stopPumpslave_id = 0
+  global stopPumpThreadStarted = [False, False, False, False]
+  global stopPumpThreadHandles = [0, 0, 0, 0]
+  
+  thread stopPumpOnDistanceTravelled():
+    distance = stopPumpDistance
+    slave_id = stopPumpslave_id
+    stopPumpThreadStarted[rq_slave_id_to_index(slave_id)] = True
+  
+    measuredDistance = waitForDistanceTravelled(distance)
+  
+    rq_stop(slave_id_to_gripper_socket(slave_id))
+  
+    stopPumpThreadStarted[rq_slave_id_to_index(slave_id)] = False
+  end
+  
+  def waitForDistanceTravelled(distance):
+    startingPose = get_actual_tcp_pose()
+    measuredDistance = 0
+    while (measuredDistance < distance):
+      sleep(0.1)
+      measuredDistance = point_dist(get_actual_tcp_pose(), startingPose)
+    end
+  
+    return measuredDistance
+  end
+  
+  def startStopPumpOnDistanceTravelledThread(distance, slave_id=9):
+    if (stopPumpThreadStarted[rq_slave_id_to_index(slave_id)]):
+      return 0
+    end
+  
+    global stopPumpDistance = distance
+    global stopPumpslave_id = slave_id
+    stopPumpThreadHandles[rq_slave_id_to_index(slave_id)] = run stopPumpOnDistanceTravelled()
+    waitForStopPumpOnDistanceTravelledThreadStarted(slave_id)
+    return stopPumpThreadHandles[rq_slave_id_to_index(slave_id)]
+  end
+  
+  def waitForStopPumpOnDistanceTravelledThreadStarted(slave_id=9):
+    while (not(stopPumpThreadStarted[rq_slave_id_to_index(slave_id)])):
+      sleep(0.008)
+    end
+  end
+  
+  def stopStopPumpOnDistanceTravelledThread(slave_id=9):
+    handle = stopPumpThreadHandles[rq_slave_id_to_index(slave_id)]
+    threadIsRunning = stopPumpThreadStarted[rq_slave_id_to_index(slave_id)]
+    if (threadIsRunning):
+      kill handle
+      stopPumpThreadHandles[rq_slave_id_to_index(slave_id)] = 0
+    end
+  end
+  #################################################
+  # End - Stops the pump on a distance travelled
+  #################################################
+  
+  #################################################
+  # Vacuum general functions
+  #################################################
+  def rq_wait_for_vacuum_object_detected(slave_id=9):
+      while (not rq_is_vacuum_obj_detected_by_slave_id(slave_id)):
+          if (rq_is_vacuum_timeout(slave_id)):
+              return False
+          end
+          sleep(0.008)
+      end
+      return True
+  end
+  
+  def rq_wait_for_vacuum_object_secured(slave_id=9):
+      while (not rq_is_vacuum_obj_secured(slave_id)):
+          if (rq_is_vacuum_timeout(slave_id)):
+              return False
+          end
+          sleep(0.008)
+      end
+      return True
+  end
+  
+  def rq_wait_for_vacuum_object_suction_complete(slave_id=9):
+      remaining_retries = 50
+  
+       # Wait for suction started
+      while (not rq_is_vacuum_obj_in_suction(slave_id) and
+             not rq_is_vacuum_obj_detected_by_slave_id(slave_id) and
+             remaining_retries > 0):
+          sleep(0.01)
+          remaining_retries = remaining_retries - 1
+      end
+  
+      # Wait for suction completed
+      while (rq_is_vacuum_obj_in_suction(slave_id)):
+          if (rq_is_vacuum_timeout(slave_id)):
+              return False
+          end
+          sleep(0.01)
+      end
+  
+      return True
+  end
+  
+  def rq_wait_for_vacuum_object_not_detected(slave_id=9):
+      while (rq_is_vacuum_obj_detected_by_slave_id(slave_id)):
+          sleep(0.01)
+      end
+  end
+  
+  def rq_is_vacuum_obj_detected_by_slave_id(slave_id=9):
+      gOBJ = driver_gripper_client.getObjectDetectionFlag(slave_id)
+      return is_vacuum_OBJ_object_detected(gOBJ)
+  end
+  
+  def rq_is_vacuum_obj_detected(gripper_socket="1"):
+      slave_id = gripper_socket_to_slave_id(gripper_socket)
+      return rq_is_vacuum_obj_detected_by_slave_id(slave_id)
+  end
+  
+  def rq_is_vacuum_obj_secured(slave_id=9):
+      gOBJ = driver_gripper_client.getObjectDetectionFlag(slave_id)
+      return is_vacuum_OBJ_object_secured(gOBJ)
+  end
+  
+  def rq_is_vacuum_obj_in_suction(slave_id=9):
+      gOBJ = driver_gripper_client.getObjectDetectionFlag(slave_id)
+      return is_vacuum_OBJ_object_in_motion(gOBJ)
+  end
+  
+  def rq_is_vacuum_timeout(slave_id=9):
+      gFLT = driver_gripper_client.getFault(slave_id)
+      return gFLT == 6
+  end
+  
+  def is_vacuum_OBJ_object_in_motion(gOBJ):
+      return gOBJ == 0
+  end
+  
+  def is_vacuum_OBJ_object_detected(gOBJ):
+      return gOBJ == 1 or gOBJ == 2
+  end
+  
+  def is_vacuum_OBJ_object_secured(gOBJ):
+      return gOBJ == 2
+  end
+  
+  def rq_set_vacuum_and_wait(pressure, timeout, minimum, advanced_mode, slave_id=9):
+      driver_gripper_client.configureVacuum(slave_id, advanced_mode, pressure, minimum, timeout)
+  end
+  
+  def is_continuous_grip(maximum_vacuum):
+    return maximum_vacuum == 0
+  end
+  
+  def rq_vacuum_release(advanced_mode=False, shutoff_distance_cm=5, wait_for_object_released=True, gripper_socket="1"):
+    rq_wait_for_gripper_reconnection()
+    local slave_id = gripper_socket_to_slave_id(gripper_socket)
+    local shutoff_distance = scale(shutoff_distance_cm, [0, 99], [0.00, 0.99])
+    local pressure = 255
+    local minimum = 0
+    local timeout = 255
+    rq_vacuum_release_raw(advanced_mode, pressure, minimum, timeout, shutoff_distance, wait_for_object_released, slave_id)
+  end
+  
+  def rq_vacuum_release_raw(advanced_mode, pressure, minimum, timeout, shutoff_distance, wait_for_object_released, slave_id):
+    rq_reset_fault_and_activate(slave_id)
+  
+    if advanced_mode:
+      rq_set_vacuum_and_wait(pressure, timeout, minimum, 1, slave_id)
+    else:
+      rq_set_vacuum_and_wait(pressure, timeout, minimum, 0, slave_id)
+    end
+  
+    # The following patch is for Robotiq's Camera issue when communication is lost, but not the activation
+    # the communication driver reset the GTO bit
+    driver_gripper_client.goto(slave_id, 1)
+  
+    if wait_for_object_released:
+      while (rq_is_vacuum_obj_detected_by_slave_id(slave_id)):
+  
+        if advanced_mode:
+          rq_set_vacuum_and_wait(pressure, timeout, minimum, 1, slave_id)
+        else:
+          rq_set_vacuum_and_wait(pressure, timeout, minimum, 0, slave_id)
+        end
+  
+        # The following patch is for Robotiq's Camera issue when communication is lost, but not the activation
+        # the communication driver reset the GTO bit
+        driver_gripper_client.goto(slave_id, 1)
+        sleep(0.01)
+      end
+    end
+  
+    if advanced_mode:
+      startStopPumpOnDistanceTravelledThread(shutoff_distance, slave_id)
+    end
+  end
+  
+  def rq_vacuum_grip(advanced_mode=False, maximum_vacuum=60, minimum_vacuum=40, timeout_ms=3000, wait_for_object_detected=True, gripper_socket="1"):
+    rq_wait_for_gripper_reconnection()
+    local slave_id = gripper_socket_to_slave_id(gripper_socket)
+    local pressure = floor(scale(maximum_vacuum, [0, 100], [100, 0]))
+    local minimum = floor(scale(minimum_vacuum, [0, 100], [100, 0]))
+    local timeout = floor(scale(timeout_ms, [0, 25500], [0, 255]))
+    rq_vacuum_grip_raw(advanced_mode, pressure, minimum, timeout, slave_id)
+    if wait_for_object_detected:
+          suction_completed = rq_wait_for_vacuum_object_suction_complete(slave_id)
+          if(not suction_completed):
+            driver_gripper_client.goto(slave_id, 0)
+          end
+    end
+  end
+  
+  def rq_vacuum_grip_raw(advanced_mode, pressure, minimum, timeout, slave_id):
+    stopStopPumpOnDistanceTravelledThread(slave_id)
+    rq_reset_fault_and_activate(slave_id)
+  
+    if advanced_mode:
+      rq_set_vacuum_and_wait(pressure, timeout, minimum, 1, slave_id)
+    else:
+      rq_set_vacuum_and_wait(pressure, timeout, minimum, 0, slave_id)
+    end
+  
+    driver_gripper_client.goto(slave_id, 1)
+  end
+  
+  def is_FLT_no_fault(gFLT):
+      return gFLT == 0
+  end
+  
+  def is_FLT_vacuum_timeout(gFLT):
+    return gFLT == 6
+  end
+  
+  def is_FLT_faulted(gFLT):
+      return gFLT >= 8
+  end
+  
+  def rq_reset_fault_and_activate(slave_id):
+      gFLT = driver_gripper_client.getFault(slave_id)
+  
+      if(not is_FLT_no_fault(gFLT)):
+          if(is_FLT_vacuum_timeout(gFLT)):
+              driver_gripper_client.goto(slave_id, 0)
+          elif(is_FLT_faulted(gFLT)):
+              driver_gripper_client.goto(slave_id, 0)
+              driver_gripper_client.activate([slave_id], True)
+          end
+      elif(not rq_is_gripper_activated(slave_id)):
+          driver_gripper_client.goto(slave_id, 0)
+          driver_gripper_client.activate([slave_id], False)
+      end
+  end
+  #################################################
+  # End - Vacuum general functions
+  #################################################
+    def scale(value, rawRange, scaledRange):
+        def computeSlope(inputRange, outputRange):
+            outputRangeDelta = outputRange[1] - outputRange[0]
+            inputRangeDelta = inputRange[1] - inputRange[0]
+
+            if (inputRangeDelta == 0):
+                return 0
+            else:
+                return outputRangeDelta / inputRangeDelta
+            end
+        end
+
+        def computeIntercept(slope, inputRange, outputRange):
+            return outputRange[0] - (slope * inputRange[0])
+        end
+
+        def clipScaledValue(outputScaledValue, outputRange):
+            if (outputRange[0] < outputRange[1]):
+                return clipWhenLowerLimitIsLessThanHigher(outputScaledValue, outputRange)
+            else:
+                return clipWhenLowerLimitIsGreaterThanHigherLimit(outputScaledValue, outputRange)
+            end
+        end
+
+        def clipWhenLowerLimitIsGreaterThanHigherLimit(outputScaledValue, outputRange):
+            if (outputScaledValue < outputRange[1]):
+                return outputRange[1]
+            elif (outputScaledValue > outputRange[0]):
+                return outputRange[0]
+            else:
+                return outputScaledValue
+            end
+        end
+
+        def clipWhenLowerLimitIsLessThanHigher(outputScaledValue, outputRange):
+            if (outputScaledValue < outputRange[0]):
+                return outputRange[0]
+            elif (outputScaledValue > outputRange[1]):
+                return outputRange[1]
+            else:
+                return outputScaledValue
+            end
+        end
+
+        slope = computeSlope(rawRange, scaledRange)
+        intercept = computeIntercept(slope, rawRange, scaledRange)
+        scaledValue = slope * value + intercept
+        return clipScaledValue(scaledValue, scaledRange)
+    end
+
+    def limit(value, range):
+        return scale(value, range, range)
+    end
+
+  vacuumGripCheckWarningTitle = "Vacuum grip check"
+  vacuumGripCheckWarningMessage = "Vacuum gripper object lost"
+  vacuumGripTimeoutTitle = "Vacuum gripper fault"
+  vacuumGripTimeoutMessage = "Grip has timed out"
+  # end: URCap Installation Node
+  # begin: URCap Installation Node
+  #   Source: Robotiq_Grippers, 3.19.1.111718, Robotiq Inc.
+  #   Type: Gripper
+  RQ_UNIT_PERCENT = 0
+  RQ_UNIT_MM = 1
+  RQ_UNIT_INCH = 2
+  
+  global gripper_reconnecting = False
+  rq_current_limit_enabled = False
+  gripper_closed_norm = [100, 100, 100, 100]
+  gripper_open_norm = [0, 0, 0, 0]
+  gripper_closed_mm = [0, 0, 0, 0]
+  gripper_open_mm = [50, 50, 50, 50]
+  
+  driver_gripper_client = rpc_factory("xmlrpc","http://127.0.0.1:63353")
+  
+  def rq_set_force_norm(force_norm, gripper_socket="1"):
+      rq_wait_for_gripper_reconnection()
+      slave_id = gripper_socket_to_slave_id(gripper_socket)
+      rq_set_force_norm_multi_grippers(force_norm, [slave_id])
+  end
+  
+  def rq_set_force_norm_multi_grippers(force_norm, slave_ids=[9]):
+      driver_gripper_client.setForce(slave_ids, force_norm)
+  end
+  
+  def rq_set_speed_norm(speed_norm, gripper_socket="1"):
+      rq_wait_for_gripper_reconnection()
+      slave_id = gripper_socket_to_slave_id(gripper_socket)
+      rq_set_speed_norm_multi_grippers(speed_norm, [slave_id])
+  end
+  
+  def rq_set_speed_norm_multi_grippers(speed_norm, slave_ids=[9]):
+      driver_gripper_client.setSpeed(slave_ids, speed_norm)
+  end
+  
+  def rq_open_and_wait(gripper_socket="1"):
+      rq_wait_for_gripper_reconnection()
+      slave_id = gripper_socket_to_slave_id(gripper_socket)
+      driver_gripper_client.openGripper(slave_id)
+      rq_wait_for_motion_complete([slave_id])
+  end
+  
+  def rq_close_and_wait(gripper_socket="1"):
+      rq_wait_for_gripper_reconnection()
+      slave_id = gripper_socket_to_slave_id(gripper_socket)
+      driver_gripper_client.closeGripper(slave_id)
+      rq_wait_for_motion_complete([slave_id])
+  end
+  
+  def rq_move_norm_multi_grippers(position, slave_ids=[9]):
+     # rq_wait_for_gripper_reconnection fucntion is not called here because it is already done in the gripper contribution
+     # script and this function is not defined for public usage.
+     all_gripper_limits = get_all_gripper_limits(slave_ids)
+     driver_gripper_client.move(slave_ids, position, RQ_UNIT_PERCENT, all_gripper_limits)
+  end
+  
+  def rq_move_and_wait_norm_multi_grippers(position, slave_ids=[9]):
+       all_gripper_limits = get_all_gripper_limits(slave_ids)
+       driver_gripper_client.move(slave_ids, position, RQ_UNIT_PERCENT, all_gripper_limits)
+       rq_wait_for_motion_complete(slave_ids)
+  end
+  
+  def rq_move_and_wait(position, unit, gripper_socket="1"):
+     rq_wait_for_gripper_reconnection()
+     slave_id = gripper_socket_to_slave_id(to_str(gripper_socket))
+     all_gripper_limits = get_all_gripper_limits([slave_id])
+     driver_gripper_client.move([slave_id], position, unit, all_gripper_limits)
+     rq_wait_for_motion_complete([slave_id])
+  end
+  
+  def rq_move_and_wait_norm(position, gripper_socket="1"):
+      rq_move_and_wait(position, RQ_UNIT_PERCENT, gripper_socket)
+  end
+  
+  def rq_move_and_wait_mm(position, gripper_socket="1"):
+      rq_move_and_wait(position, RQ_UNIT_MM, gripper_socket)
+  end
+  
+  def rq_move_and_wait_inches(position, gripper_socket="1"):
+     rq_move_and_wait(position, RQ_UNIT_INCH, gripper_socket)
+  end
+  
+  def rq_is_object_detected(gripper_socket="1"):
+     slave_id = gripper_socket_to_slave_id(gripper_socket)
+     return driver_gripper_client.isObjectDetected(slave_id)
+  end
+  
+  def rq_current_pos_norm(gripper_socket="1"):
+      slave_id = gripper_socket_to_slave_id(gripper_socket)
+      gripper_limits = get_gripper_limits(gripper_socket)
+      return driver_gripper_client.getCurrentPosition(slave_id,
+                                    RQ_UNIT_PERCENT,
+                                    gripper_limits[0],
+                                    gripper_limits[1],
+                                    gripper_limits[2],
+                                    gripper_limits[3])
+  end
+  
+  def rq_current_pos_mm(gripper_socket=1):
+      slave_id = gripper_socket_to_slave_id(to_str(gripper_socket))
+      gripper_limits = get_gripper_limits(to_str(gripper_socket))
+      return driver_gripper_client.getCurrentPosition(slave_id,
+                                    RQ_UNIT_MM,
+                                    gripper_limits[0],
+                                    gripper_limits[1],
+                                    gripper_limits[2],
+                                    gripper_limits[3])
+  end
+  
+  def rq_current_pos_inches(gripper_socket=1):
+      slave_id = gripper_socket_to_slave_id(to_str(gripper_socket))
+      gripper_limits = get_gripper_limits(to_str(gripper_socket))
+      return driver_gripper_client.getCurrentPosition(slave_id,
+                                    RQ_UNIT_INCH,
+                                    gripper_limits[0],
+                                    gripper_limits[1],
+                                    gripper_limits[2],
+                                    gripper_limits[3])
+  end
+  
+  def rq_reset(gripper_socket="1"):
+      slave_id = gripper_socket_to_slave_id(gripper_socket)
+      driver_gripper_client.deactivate([slave_id])
+  end
+  
+  def rq_set_gripper_max_cur(current_mA, gripper_socket="1"):
+      rq_wait_for_gripper_reconnection()
+      slave_id = gripper_socket_to_slave_id(gripper_socket)
+      driver_gripper_client.setMaximumCurrent(current_mA, slave_id)
+  end
+  
+  def rq_get_gripper_max_cur(gripper_socket="1"):
+      slave_id = gripper_socket_to_slave_id(gripper_socket)
+      return driver_gripper_client.getMaximumCurrent(slave_id)
+  end
+  
+  def rq_set_max_current_for_all_grippers():
+      rq_wait_for_gripper_reconnection()
+      driver_gripper_client.setMaximumCurrentOnAllGrippers(rq_current_limit_enabled)
+  end
+  
+  def rq_is_gripper_activated(slave_id=9):
+      return driver_gripper_client.isGripperActivated(slave_id)
+  end
+  
+  def rq_is_gripper_connected(slave_id=9):
+      return driver_gripper_client.isGripperConnected(slave_id)
+  end
+  
+  def rq_get_fault(slave_id=9):
+      return driver_gripper_client.getFault(slave_id)
+  end
+  
+  def rq_activate_and_wait(gripper_socket="1"):
+      slave_id = gripper_socket_to_slave_id(gripper_socket)
+      if (not rq_is_gripper_activated(slave_id)):
+        driver_gripper_client.activate([slave_id], False)
+      end
+  end
+  
+  def rq_activate_all_grippers(reset=False):
+      empty_array_used_to_act_on_all_grippers = []
+      if (reset):
+        driver_gripper_client.activate(empty_array_used_to_act_on_all_grippers, True)
+      else:
+        driver_gripper_client.activateIfRequired(empty_array_used_to_act_on_all_grippers)
+      end
+  end
+  
+  def get_closed_norm(gripper_socket):
+      return gripper_closed_norm[rq_gripper_socket_to_index(gripper_socket)]
+  end
+  
+  def get_open_norm(gripper_socket):
+      return gripper_open_norm[rq_gripper_socket_to_index(gripper_socket)]
+  end
+  
+  def get_open_mm(gripper_socket):
+      return gripper_open_mm[rq_gripper_socket_to_index(gripper_socket)]
+  end
+  
+  def get_closed_mm(gripper_socket):
+      return gripper_closed_mm[rq_gripper_socket_to_index(gripper_socket)]
+  end
+  
+  def set_closed_norm(closed_norm, gripper_socket):
+      gripper_closed_norm[rq_gripper_socket_to_index(gripper_socket)] = closed_norm
+  end
+  
+  def set_open_norm(open_norm, gripper_socket):
+      gripper_open_norm[rq_gripper_socket_to_index(gripper_socket)] = open_norm
+  end
+  
+  def set_closed_mm(closed_mm, gripper_socket):
+      gripper_closed_mm[rq_gripper_socket_to_index(gripper_socket)] = closed_mm
+  end
+  
+  def set_open_mm(opened_mm, gripper_socket):
+      gripper_open_mm[rq_gripper_socket_to_index(gripper_socket)] = opened_mm
+  end
+  
+  def slave_id_to_gripper_socket(slave_id):
+      if slave_id == 9:
+          return "1"
+      else:
+          return to_str(slave_id)
+      end
+  end
+  
+  def gripper_socket_to_slave_id(gripper_socket):
+      if gripper_socket == "1":
+          return 9
+      else:
+          return to_num(gripper_socket)
+      end
+  end
+  
+  def rq_slave_id_to_index(slave_id):
+      if slave_id == 9:
+          return 0
+      else:
+          return slave_id - 1
+      end
+  end
+  
+  def rq_gripper_socket_to_index(gripper_socket):
+      return to_num(gripper_socket) - 1
+  end
+  
+  def get_all_gripper_limits(slave_ids):
+     all_gripper_limits = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+     nb_slave_ids = get_list_length(slave_ids)
+     slave_id_index = 0
+     index = 0
+     sub_index = 0
+     while (index < nb_slave_ids):
+         slave_id_index = 0
+         items_per_limit = 4
+         gripper_socket = slave_id_to_gripper_socket(slave_ids[index])
+         gripper_limits = get_gripper_limits(gripper_socket)
+         while (sub_index < items_per_limit):
+            all_gripper_limits[index] = gripper_limits[sub_index]
+            sub_index = sub_index + 1
+            index = index + 1
+         end
+         index = index + 1
+     end
+  
+     return all_gripper_limits
+  end
+  
+  def get_gripper_limits(gripper_socket):
+      return [get_closed_norm(gripper_socket),
+              get_open_norm(gripper_socket),
+              get_closed_mm(gripper_socket),
+              get_open_mm(gripper_socket)]
+  end
+  
+  def rq_wait_for_motion_complete(slave_ids):
+      nb_slave_ids = get_list_length(slave_ids)
+      index = 0
+      while (index < nb_slave_ids):
+        rq_wait(slave_ids[index])
+        index = index + 1
+      end
+  end
+  
+  def rq_stop(gripper_socket="1"):
+      slave_id = gripper_socket_to_slave_id(gripper_socket)
+      driver_gripper_client.goto(slave_id, 0)
+  end
+  
+  def rq_wait(slave_id):
+      # Wait for the gripper motion to complete
+      while (not rq_is_motion_complete(slave_id)):
+          # The following patch is for Robotiq's Camera issue when communication is lost, but not the activation
+          # the communication driver reset the GTO bit
+          driver_gripper_client.goto(slave_id, 1)
+          sleep(0.1)
+      end
+  end
+  
+  def rq_is_motion_complete(slave_id):
+      detection_flag = driver_gripper_client.getObjectDetectionFlag(slave_id)
+      return detection_flag > 0 and detection_flag < 4
+  end
+  
+  def write_error_popup(index, message_part_1, message_part_2, title):
+      popup_message_part_1 = str_cat(message_part_1, index)
+      popup_message_part_2 = str_cat(popup_message_part_1, " ")
+      popup_message = str_cat(popup_message_part_2, message_part_2)
+      return popup(popup_message, title, False, True, True)
+  end
+  
+  def rq_disconnect_grippers():
+      driver_gripper_client.pauseAndDisconnect()
+  end
+  
+  def rq_reconnect_grippers(blocking=False, slave_ids=[]):
+      if blocking:
+          global gripper_reconnecting = True
+          driver_gripper_client.reconnectAndResume(slave_ids)
+          gripper_reconnecting = False
+      else:
+          thread recon_thread():
+              rq_reconnect_grippers(True)
+              return False
+          end
+          thrd = run recon_thread()
+      end
+  end
+  
+  def rq_wait_for_gripper_reconnection(timeout_s = 30.0):
+      while (gripper_reconnecting == True):
+          if (timeout_s <= 0):
+            popup("Gripper has not reconnected before the expected time")
+            halt
+          else:
+            sync()
+            timeout_s = timeout_s - get_steptime()
+          end
+      end
+  end
+  
+  def rq_gripper_allow_tool_com(allow_tool_comm):
+      driver_gripper_client.allowToolComm(allow_tool_comm)
+  end
+  set_closed_norm(100.0, "1")
+  set_open_norm(0.0, "1")
+  set_closed_mm(0.0, "1")
+  set_open_mm(50.0, "1")
+  set_closed_norm(100.0, "2")
+  set_open_norm(0.0, "2")
+  set_closed_mm(0.0, "2")
+  set_open_mm(50.0, "2")
+  set_closed_norm(100.0, "3")
+  set_open_norm(0.0, "3")
+  set_closed_mm(0.0, "3")
+  set_open_mm(50.0, "3")
+  set_closed_norm(100.0, "4")
+  set_open_norm(0.0, "4")
+  set_closed_mm(0.0, "4")
+  set_open_mm(50.0, "4")
+  rq_current_limit_enabled = False
+  # end: URCap Installation Node
+  step_count_e4c24527_c132_43a1_99eb_e5b79ce236fe = 0.0
+  thread Step_Counter_Thread_d49c0c40_cb0c_4b75_806c_f1a2869d7c38():
+    while (True):
+      step_count_e4c24527_c132_43a1_99eb_e5b79ce236fe = step_count_e4c24527_c132_43a1_99eb_e5b79ce236fe + 1.0
+      sync()
+    end
+  end
+  run Step_Counter_Thread_d49c0c40_cb0c_4b75_806c_f1a2869d7c38()
+  while (True):
+    $ 2 "Robot Program"
+    # begin: URCap Program Node
+    #   Source: Robotiq_Grippers, 3.19.1.111718, Robotiq Inc.
+    #   Type: Gripper Activate
+    $ 3 "Gripper Reset and Activate"
+    
+    rq_set_max_current_for_all_grippers()
+    
+    reset_and_activate = True
+    
+    rq_activate_all_grippers(True)
+    # end: URCap Program Node
+    # begin: URCap Program Node
+    #   Source: Robotiq_Grippers, 3.19.1.111718, Robotiq Inc.
+    #   Type: Grip Check
+    $ 4 "Grip Check"
+    # begin: URCap Program Node
+    #   Source: Robotiq_Grippers, 3.19.1.111718, Robotiq Inc.
+    #   Type: If
+    $ 5 "If grip validated          " "noBreak"
+    if (rq_is_object_detected("1") and rq_current_pos_norm("1") >= 95.0 and rq_current_pos_norm("1") <= 105.0):
+      # begin: URCap Program Node
+      #   Source: Robotiq_Grippers, 3.19.1.111718, Robotiq Inc.
+      #   Type: Gripper
+      $ 6 "Gripper Move81% (1)" "noBreak"
+      gripper_slave_ids_0 = [9]
+      popupErrorGripperWord = "Gripper"
+      popupErrorNoConnection1 = "must be connected to run this program."
+      popupErrorNoConnection2 = "No connection"
+      popupErrorNotActivated1 = "is not activated. Go to Installation tab > Gripper to activate it and run the program again."
+      popupErrorNotActivated2 = "Not activated"
+      rq_gripper_speed = 90.0
+      rq_gripper_force = 91.0
+      rq_gripper_position = 80.80392156862744
+      rq_is_blocking = True
+      rq_is_robot_compliant = True
+      nb_slave_ids = get_list_length(gripper_slave_ids_0)
+      rq_wait_for_gripper_reconnection()
+      index = 0
+      while (index < nb_slave_ids):
+          if (not rq_is_gripper_connected(gripper_slave_ids_0[index])):
+              write_error_popup(index, popupErrorGripperWord, popupErrorNoConnection1, popupErrorNoConnection2)
+          end
+          index = index + 1
+      end
+      index = 0
+      while (index < nb_slave_ids):
+          if (not rq_is_gripper_activated(gripper_slave_ids_0[index])):
+              write_error_popup(index, popupErrorGripperWord, popupErrorNotActivated1, popupErrorNotActivated2)
+          end
+          index = index + 1
+      end
+      rq_set_speed_norm_multi_grippers(rq_gripper_speed, gripper_slave_ids_0)
+      rq_set_force_norm_multi_grippers(rq_gripper_force, gripper_slave_ids_0)
+      if (rq_is_blocking):
+          if rq_is_robot_compliant:
+              zero_ftsensor()
+              sleep(0.02)
+              # Maximum allowed deviation values for non-compliant axes are default values generated by UR in a Force node
+              force_mode(tool_pose(), [1, 1, 0, 0, 0, 0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0], 2, [0.15, 0.15, 0.1, 0.3490658503988659, 0.3490658503988659, 0.3490658503988659])
+          end
+          rq_move_and_wait_norm_multi_grippers(rq_gripper_position, gripper_slave_ids_0)
+          if rq_is_robot_compliant:
+              end_force_mode()
+          end
+      else:
+          rq_move_norm_multi_grippers(rq_gripper_position, gripper_slave_ids_0)
+      end
+      # end: URCap Program Node
+      # end: URCap Program Node
+    end
+    # end: URCap Program Node
+  end
+end
