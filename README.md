@@ -132,14 +132,14 @@ sudo reboot
 ### 1. Create workspace
 
 ```bash
-mkdir -p ~/ws_robotiq/src
-cd ~/ws_robotiq/src
+mkdir -p ~/ws_robotiq
+cd ~/ws_robotiq
 ```
 
 ### 2. Clone this repository
 
 ```bash
-git clone <your-repo-url> .
+git clone https://github.com/bryceag11/UR10e_Robotiq .
 ```
 
 <!-- ### 3. Import dependencies

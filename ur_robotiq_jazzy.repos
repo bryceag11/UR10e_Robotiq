@@ -3,11 +3,7 @@ repositories:
     type: git
     url: https://github.com/tylerjw/serial.git
     version: ros2
-  Universal_Robots_ROS2_Driver:
-    type: git
-    url: https://github.com/UniversalRobots/Universal_Robots_ROS2_Driver.git
-    version: main
   ros2_robotiq_gripper:
     type: git
     url: https://github.com/bryceag11/ros2_robotiq_gripper
-    version: ros2
+    version: jazzy
