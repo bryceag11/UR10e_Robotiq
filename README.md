@@ -17,8 +17,8 @@ This repository provides a complete integration of the UR10e robot arm with the 
 - Full MoveIt2 integration with three planning groups: `ur_manipulator`, `gripper`, and `ur10e_robotiq`
 - URScript gripper controller using port 30002 for direct gripper control
 - Calibrated TCP at gripper tip for accurate motion planning
-- Fake hardware support for gripper in ros2_control (real control via URScript)
-- Comprehensive collision checking configuration
+- Fake hardware support for gripper in ros2_control 
+- Collision checking configuration
 - RViz visualization with real-time gripper state
 
 ## Prerequisites
@@ -32,7 +32,7 @@ This repository provides a complete integration of the UR10e robot arm with the 
 
 Install ROS 2 Jazzy following the official installation guide: https://docs.ros.org/en/jazzy/Installation.html
 
-Install required dependencies:
+<!-- Install required dependencies:
 
 ```bash
 sudo apt update
@@ -45,13 +45,87 @@ sudo apt install -y \
   python3-colcon-common-extensions \
   python3-vcstool \
   git
-```
+``` -->
 
 ### Hardware Requirements
 
 - Universal Robots UR10e robot arm
 - Robotiq 2F-85 gripper
 - Network connection to robot (default IP: 192.168.56.101)
+
+### System Optimization (Recommended for Real-Time Performance)
+
+For optimal real-time control performance and to eliminate control loop overruns, configure your system with a low-latency kernel and performance CPU governor.
+
+#### Install Low-Latency Kernel
+
+```bash
+# Install low-latency kernel
+sudo apt install linux-lowlatency linux-headers-lowlatency
+
+# Install CPU power management tools
+sudo apt install linux-tools-lowlatency linux-cloud-tools-lowlatency
+
+# Reboot to use the new kernel
+sudo reboot
+
+# Verify low-latency kernel is active
+uname -r  # Should show "lowlatency" in the version
+```
+
+#### Configure CPU Governor for Performance
+
+```bash
+# Set CPU governor to performance mode (eliminates CPU frequency scaling delays)
+sudo cpupower frequency-set -g performance
+
+# Verify all CPUs are in performance mode
+cat /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
+# Should output "performance" for all CPUs
+```
+
+**Make CPU performance mode permanent:**
+
+```bash
+# Create systemd service
+sudo tee /etc/systemd/system/cpu-performance.service > /dev/null << 'EOF'
+[Unit]
+Description=Set CPU governor to performance mode
+After=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/cpupower frequency-set -g performance
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Enable and start the service
+sudo systemctl daemon-reload
+sudo systemctl enable cpu-performance.service
+sudo systemctl start cpu-performance.service
+```
+
+#### Disable CPU C-States (Optional - Further Reduces Latency)
+
+Edit GRUB configuration to disable deep CPU sleep states:
+
+```bash
+sudo vim /etc/default/grub
+```
+
+Find the line `GRUB_CMDLINE_LINUX_DEFAULT="quiet splash"` and change it to:
+```
+GRUB_CMDLINE_LINUX_DEFAULT="quiet splash intel_idle.max_cstate=0 processor.max_cstate=1"
+```
+
+Update GRUB and reboot:
+```bash
+sudo update-grub
+sudo reboot
+```
 
 ## Installation
 
@@ -108,27 +182,50 @@ echo "source ~/ws_robotiq/install/setup.bash" >> ~/.bashrc
 
 ## Usage
 
-### Launching the Complete System
+### Option 1: Complete System Launch
 
-The system requires two terminals for proper operation.
-
-#### Terminal 1: Robot Driver and Gripper Controller
-
-Launch the UR driver and gripper controller:
+Launch everything in one terminal:
 
 ```bash
 source ~/ws_robotiq/install/setup.bash
-ros2 launch ur10e_robotiq_cell ur10e_robotiq_control.launch.py robot_ip:=192.168.56.101 launch_rviz:=false
+ros2 launch ur10e_robotiq_cell ur10e_complete_system.launch.py robot_ip:=192.168.56.101
 ```
 
-This will:
-- Start the UR robot driver
-- Wait for External Control program connection
-- Launch the URScript gripper controller after 5 seconds
+This automatically:
+- Starts the UR robot driver with headless mode
+- Activates the trajectory controller
+- Launches the URScript gripper controller
+- Starts MoveIt motion planning
+- Opens RViz with MotionPlanning plugin and interactive markers
 
-On the robot teach pendant, press play on the External Control program. The robot will automatically connect to the ROS driver.
+**What happens on startup:**
+1. System connects to robot and uploads External Control program
+2. External Control program auto-starts on the robot (headless mode)
+3. Controllers activate automatically
+4. RViz launches with full MoveIt interface and interactive markers
 
-#### Terminal 2: MoveIt
+**Launch arguments:**
+```bash
+ros2 launch ur10e_robotiq_cell ur10e_complete_system.launch.py \
+  robot_ip:=192.168.56.101 \
+```
+
+### Option 2: Separate Launch
+
+
+#### Terminal 1: Robot Driver and Gripper Controller
+
+```bash
+source ~/ws_robotiq/install/setup.bash
+ros2 launch ur10e_robotiq_cell ur10e_robotiq_control.launch.py robot_ip:=192.168.56.101
+```
+
+This starts:
+- UR robot driver with headless mode
+- URScript gripper controller
+- Basic RViz visualization
+
+#### Terminal 2: MoveIt with Interactive Markers
 
 After the robot driver is connected, launch MoveIt:
 
@@ -137,16 +234,16 @@ source ~/ws_robotiq/install/setup.bash
 ros2 launch ur10e_robotiq_moveit_config ur_moveit.launch.py ur_type:=ur10e
 ```
 
-This opens RViz with the MoveIt motion planning interface.
+This opens RViz with the MoveIt MotionPlanning plugin and interactive markers.
 
 ### Using MoveIt for Motion Planning
 
 In the MoveIt RViz interface:
 
 1. Select a planning group from the dropdown:
-   - `ur_manipulator` - Control arm only
-   - `gripper` - Control gripper only
-   - `ur10e_robotiq` - Control arm and gripper together
+   - `ur_manipulator`: Control arm only
+   - `gripper`: Control gripper only
+   - `ur10e_robotiq`: Control arm and gripper together
 
 2. Click "Update" next to "Start State" to sync with the real robot
 
@@ -191,28 +288,29 @@ Robotiq gripper driver ported to ROS 2 Jazzy. Includes:
 - Controller implementations
 - URDF description for Robotiq 2F-85
 
-Source: https://github.com/PickNikRobotics/ros2_robotiq_gripper (Jazzy port)
+Source: https://github.com/bryceag11/ros2_robotiq_gripper
+(Jazzy port)
 
 ### ur10e_robotiq_cell
 
 Main integration package containing:
-- `urdf/` - Combined UR10e + Robotiq URDF with calibrated TCP
-- `launch/` - Launch files for robot driver and description
-- `scripts/` - URScript gripper controller
-- `config/` - ros2_control controllers configuration
-- `resources/` - URScript files with gripper functions
+- `urdf/`: Combined UR10e + Robotiq URDF with calibrated TCP
+- `launch/`: Launch files for robot driver and description
+- `scripts/`: URScript gripper controller
+- `config/`: ros2_control controllers configuration
+- `resources/`: URScript files with gripper functions
 
 Key files:
-- `urdf/ur10e_robotiq.urdf.xacro` - Complete robot description
-- `launch/ur10e_robotiq_control.launch.py` - Main control launch file
-- `scripts/urscript_gripper_controller.py` - Gripper action server
+- `urdf/ur10e_robotiq.urdf.xacro`: Complete robot description
+- `launch/ur10e_robotiq_control.launch.py`: Main control launch file
+- `scripts/urscript_gripper_controller.py`: Gripper action server
 
 ### ur10e_robotiq_moveit_config
 
 MoveIt2 configuration package containing:
-- `config/` - MoveIt configuration files
-- `launch/` - MoveIt launch files
-- `srdf/` - Semantic robot description with planning groups
+- `config/`: MoveIt configuration files
+- `launch/`: MoveIt launch files
+- `srdf/`: Semantic robot description with planning groups
 
 Key configurations:
 - Three planning groups: ur_manipulator, gripper, ur10e_robotiq
@@ -224,13 +322,11 @@ Key configurations:
 
 ### Control Strategy
 
-**UR Arm**: Controlled via ros2_control through External Control URCap (port 50002)
+**UR Arm & Gripper**: Controlled via ros2_control through External Control URCap (port 50002)
 
-**Gripper**: Controlled via URScript commands (port 30002) with URCap functions from `grippy.script`
 
 This dual-control approach provides:
-- Reliable gripper operation independent of ros2_control
-- Direct URScript access for gripper primitives
+- Reliable gripper operation
 - Fake hardware interface in ros2_control to avoid conflicts
 
 ### TCP Configuration
@@ -270,7 +366,7 @@ Check:
 ### Gripper not responding
 
 Verify:
-1. URScript gripper controller node is running
+1. Gripper controller node is running
 2. Robot is connected (External Control active)
 3. Gripper is activated (run activation script if needed)
 4. Action server is available: `ros2 action list | grep gripper_cmd`
@@ -284,15 +380,7 @@ trajectory_execution:
   allowed_start_tolerance: 0.1  # Increase from 0.05
 ```
 
-## Configuration Files
 
-Key configuration files you may need to modify:
-
-- `src/ur10e_robotiq_cell/urdf/ur10e_robotiq.urdf.xacro` - Robot description, TCP calibration
-- `src/ur10e_robotiq_cell/config/ur10e_robotiq_controllers.yaml` - ros2_control controllers
-- `src/ur10e_robotiq_moveit_config/config/moveit_controllers.yaml` - MoveIt controllers
-- `src/ur10e_robotiq_moveit_config/config/joint_limits.yaml` - Joint velocity/acceleration limits
-- `src/ur10e_robotiq_moveit_config/srdf/ur10e_robotiq.srdf.xacro` - Planning groups, collision rules
 
 ## Launch File Arguments
 
@@ -305,9 +393,9 @@ ros2 launch ur10e_robotiq_cell ur10e_robotiq_control.launch.py \
 ```
 
 Arguments:
-- `robot_ip` - IP address of UR robot (default: 192.168.56.101)
-- `launch_rviz` - Launch RViz with robot model (default: true)
-- `use_fake_hardware` - Use mock hardware instead of real robot (default: false)
+- `robot_ip`: IP address of UR robot (default: 192.168.56.101)
+- `launch_rviz`: Launch RViz with robot model (default: true)
+- `use_fake_hardware`: Use mock hardware instead of real robot (default: false)
 
 ### ur_moveit.launch.py
 
@@ -318,18 +406,18 @@ ros2 launch ur10e_robotiq_moveit_config ur_moveit.launch.py \
 ```
 
 Arguments:
-- `ur_type` - UR robot model (required: ur10e)
-- `launch_rviz` - Launch RViz with MoveIt interface (default: true)
-- `launch_servo` - Enable MoveIt Servo for real-time control (default: false)
+- `ur_type`: UR robot model (required: ur10e)
+- `launch_rviz`: Launch RViz with MoveIt interface (default: true)
+- `launch_servo`: Enable MoveIt Servo for real-time control (default: false)
 
 ## Credits and References
 
 This integration builds upon:
 
-- [Universal Robots ROS2 Driver](https://github.com/UniversalRobots/Universal_Robots_ROS2_Driver) - UR robot driver
-- [ros2_robotiq_gripper](https://github.com/PickNikRobotics/ros2_robotiq_gripper) - Robotiq gripper driver 
-- [serial](https://github.com/tylerjw/serial) - Serial communication library
-- [MoveIt2](https://moveit.ai/) - Motion planning framework
+- [Universal Robots ROS2 Driver](https://github.com/UniversalRobots/Universal_Robots_ROS2_Driver): UR robot driver
+- [ros2_robotiq_gripper](https://github.com/PickNikRobotics/ros2_robotiq_gripper): Robotiq gripper driver 
+- [serial](https://github.com/tylerjw/serial): Serial communication library
+- [MoveIt2](https://moveit.ai/): Motion planning framework
 
 
 ## Contributing

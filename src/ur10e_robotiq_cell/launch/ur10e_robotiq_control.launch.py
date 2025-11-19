@@ -18,6 +18,7 @@ def launch_setup(context, *args, **kwargs):
     tool_device_name = LaunchConfiguration("tool_device_name")
     tool_tcp_port = LaunchConfiguration("tool_tcp_port")
     kinematics_params_file = LaunchConfiguration("kinematics_params_file")
+    headless_mode = LaunchConfiguration("headless_mode")
 
     # Path to our robot description launch file
     description_launchfile = PathJoinSubstitution([
@@ -52,6 +53,8 @@ def launch_setup(context, *args, **kwargs):
             "use_tool_communication": use_tool_communication,
             "tool_device_name": tool_device_name,
             "tool_tcp_port": tool_tcp_port,
+            "activate_joint_controller": "true",  # Ensure trajectory controller is activated
+            "headless_mode": headless_mode,  # Auto-start External Control program
         }.items()
     )
 
@@ -154,6 +157,14 @@ def generate_launch_description():
                 "config/ur10e/default_kinematics.yaml"
             ]),
             description="Kinematics calibration file for the robot"
+        )
+    )
+
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            "headless_mode",
+            default_value="true",
+            description="Automatically start and stop External Control program on robot"
         )
     )
 
