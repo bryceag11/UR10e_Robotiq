@@ -142,7 +142,7 @@ cd ~/ws_robotiq
 git clone https://github.com/bryceag11/UR10e_Robotiq .
 ```
 
-<!-- ### 3. Import dependencies
+### 3. Import dependencies
 
 ```bash
 cd ~/ws_robotiq
@@ -151,7 +151,8 @@ vcs import src < ur_robotiq_jazzy.repos
 
 This imports:
 - [serial](https://github.com/tylerjw/serial) - Serial communication library
-- [Universal_Robots_ROS2_Driver](https://github.com/UniversalRobots/Universal_Robots_ROS2_Driver) - UR robot driver -->
+- [ros2_robotiq_grippers](https://github.com/bryceag11/ros2_robotiq_gripper) - 
+ROS2 Robotiq Gripper Package
 
 ### 3. Install rosdep dependencies
 
