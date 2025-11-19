@@ -8,14 +8,12 @@ This repository provides a complete integration of the UR10e robot arm with the 
 
 1. Robotiq gripper driver ported to ROS 2 Jazzy
 2. Combined URDF with calibrated TCP
-3. URScript-based gripper controller for reliable hardware control
-4. MoveIt2 configuration for motion planning with arm, gripper, or both
-5. Pre-configured collision avoidance between arm and gripper
+3. MoveIt2 configuration for motion planning with arm, gripper, or both
+4. Pre-configured collision avoidance between arm and gripper
 
 ## Features
 
 - Full MoveIt2 integration with three planning groups: `ur_manipulator`, `gripper`, and `ur10e_robotiq`
-- URScript gripper controller using port 30002 for direct gripper control
 - Calibrated TCP at gripper tip for accurate motion planning
 - Fake hardware support for gripper in ros2_control 
 - Collision checking configuration
@@ -195,7 +193,6 @@ ros2 launch ur10e_robotiq_cell ur10e_complete_system.launch.py robot_ip:=192.168
 This automatically:
 - Starts the UR robot driver with headless mode
 - Activates the trajectory controller
-- Launches the URScript gripper controller
 - Starts MoveIt motion planning
 - Opens RViz with MotionPlanning plugin and interactive markers
 
@@ -223,7 +220,7 @@ ros2 launch ur10e_robotiq_cell ur10e_robotiq_control.launch.py robot_ip:=192.168
 
 This starts:
 - UR robot driver with headless mode
-- URScript gripper controller
+- Gripper controller
 - Basic RViz visualization
 
 #### Terminal 2: MoveIt with Interactive Markers
@@ -297,9 +294,9 @@ Source: https://github.com/bryceag11/ros2_robotiq_gripper
 Main integration package containing:
 - `urdf/`: Combined UR10e + Robotiq URDF with calibrated TCP
 - `launch/`: Launch files for robot driver and description
-- `scripts/`: URScript gripper controller
+- `scripts/`: Gripper controller
 - `config/`: ros2_control controllers configuration
-- `resources/`: URScript files with gripper functions
+- `resources/`: Gripper functions
 
 Key files:
 - `urdf/ur10e_robotiq.urdf.xacro`: Complete robot description
